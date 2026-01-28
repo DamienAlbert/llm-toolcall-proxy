@@ -72,6 +72,11 @@ class QwenToolCallConverter(ToolCallConverter):
                     # If JSON parsing fails, keep as string
                     arguments[key] = value
                 
+            # Special handling for shell commands: ensure is_background parameter exists
+            if function_name == "run_shell_command":
+                if "is_background" not in arguments:
+                    arguments["is_background"] = False
+                
             # Construct tool call object - note: we want arguments to remain as a dict,
             # which will be serialized properly by the final tool call structure
             tool_call = {
