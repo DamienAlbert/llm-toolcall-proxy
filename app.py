@@ -152,7 +152,7 @@ class ProxyHandler:
     
     def _handle_streaming_response(self, response: requests.Response, convert_tool_calls: bool = False) -> Response:
         """Handle streaming response with optional tool call conversion"""
-        def generate():
+        def generate(ignore_carbon=False):
             if convert_tool_calls:
                 handler = None
                 
@@ -172,6 +172,9 @@ class ProxyHandler:
                     if decoded_line.startswith('data: '):
                         data = decoded_line[6:]  # Remove 'data: ' prefix
                         
+                        if ignore_carbon and '"carbon": {' in data:
+                            continue
+
                         if data.strip() == '[DONE]':
                             # Finalize handler and send any remaining chunks
                             if handler:
@@ -211,11 +214,13 @@ class ProxyHandler:
                         # Decode bytes to UTF-8 string properly
                         try:
                             decoded_line = line.decode('utf-8')
-                            yield f"{decoded_line}\n\n"
                         except UnicodeDecodeError:
                             # Fallback to latin-1 if UTF-8 fails
                             decoded_line = line.decode('latin-1')
-                            yield f"{decoded_line}\n\n"
+                        
+                        if ignore_carbon and '"carbon": {' in decoded_line:
+                            continue
+                        yield f"{decoded_line}\n\n"
         
         # Set proper headers for SSE streaming
         headers = {
@@ -225,15 +230,16 @@ class ProxyHandler:
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': 'Content-Type',
         }
-        
+
         return Response(
-            generate(),
+            generate(ignore_carbon=True),
             status=response.status_code,
             headers=headers,
             mimetype='text/event-stream'
         )
 
 # Initialize proxy handler
+# Force reload check
 proxy = ProxyHandler()
 
 @app.route('/chat/completions', methods=['POST'])

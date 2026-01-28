@@ -8,15 +8,18 @@ from .base import ToolCallConverter, StreamingToolCallHandler, PassThroughConver
 from .glm import GLMToolCallConverter, GLMStreamingHandler
 from .openai import OpenAIToolCallConverter, OpenAIStreamingHandler
 from .claude import ClaudeToolCallConverter, ClaudeStreamingHandler
+from .qwen import QwenToolCallConverter, QwenStreamingHandler
 
 
 class ConverterFactory:
     """Factory class for creating model-specific tool call converters"""
+    # Force reload check
     
     def __init__(self):
         # Register available converters (order matters - most specific first)
         self._converters = [
             GLMToolCallConverter(),
+            QwenToolCallConverter(),
             OpenAIToolCallConverter(),
             ClaudeToolCallConverter(),
             PassThroughConverter(),  # Fallback - should be last
@@ -41,6 +44,8 @@ class ConverterFactory:
         # Return model-specific streaming handler if available
         if isinstance(converter, GLMToolCallConverter):
             return GLMStreamingHandler()
+        elif isinstance(converter, QwenToolCallConverter):
+            return QwenStreamingHandler()
         elif isinstance(converter, OpenAIToolCallConverter):
             return OpenAIStreamingHandler()
         elif isinstance(converter, ClaudeToolCallConverter):
@@ -85,6 +90,8 @@ class ConverterFactory:
         for converter in self._converters:
             if hasattr(converter, 'GLM_MODEL_PATTERNS'):
                 supported.extend(converter.GLM_MODEL_PATTERNS)
+            elif hasattr(converter, 'QWEN_MODEL_PATTERNS'):
+                supported.extend(converter.QWEN_MODEL_PATTERNS)
             elif hasattr(converter, 'OPENAI_MODEL_PATTERNS'):
                 supported.extend(converter.OPENAI_MODEL_PATTERNS)
             elif hasattr(converter, 'CLAUDE_MODEL_PATTERNS'):

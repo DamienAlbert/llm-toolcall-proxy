@@ -113,7 +113,9 @@ class StreamingToolCallHandler(ABC):
             self.buffer += delta['content']
             
             # Check for tool call markers
-            if self.converter.has_partial_tool_call(self.buffer):
+            has_partial = self.converter.has_partial_tool_call(self.buffer)
+            
+            if has_partial:
                 self.tool_call_detected = True
                 
                 # Check if we have complete tool calls
@@ -124,11 +126,19 @@ class StreamingToolCallHandler(ABC):
                     # Still accumulating, don't send this chunk
                     return None
             elif self.tool_call_detected and not self.tool_call_complete:
-                # Still accumulating tool call content
-                return None
+                # Flush the buffer as content.
+                self.tool_call_detected = False
+                
+                # Update the current chunk to include the full accumulated buffer
+                if 'content' in delta:
+                    delta['content'] = self.buffer
+                
+                # Fall through to send the chunk
+                pass
         
-        # If we're not dealing with tool calls, pass through
+        # pass through if tool calls not detected
         if not self.tool_call_detected:
+            self.buffer = ""
             return chunk_data
         
         # If tool call is complete, don't send content chunks
