@@ -9,7 +9,6 @@ from typing import Dict, Any, List
 from .base import ToolCallConverter, StreamingToolCallHandler
 from config import Config
 
-
 class QwenToolCallConverter(ToolCallConverter):
     """Converts Qwen tool call format to standard OpenAI format"""
     
@@ -59,10 +58,22 @@ class QwenToolCallConverter(ToolCallConverter):
             for param_name, param_value in param_matches:
                 key = param_name.strip()
                 value = param_value.strip()
-                arguments[key] = value
                 print(f"[DEBUG] Param: {key} = {repr(value)}")
             
-            # Construct tool call object
+                # Try to parse JSON values if possible
+                try:
+                    # Attempt to parse as JSON if it looks like JSON
+                    if value.startswith('[') or value.startswith('{'):
+                        parsed_value = json.loads(value)
+                        arguments[key] = parsed_value
+                    else:
+                        arguments[key] = value
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, keep as string
+                    arguments[key] = value
+                
+            # Construct tool call object - note: we want arguments to remain as a dict,
+            # which will be serialized properly by the final tool call structure
             tool_call = {
                 "id": str(hash(f"{function_name}_{i}_{len(tool_calls)}") % 1000000000),
                 "type": "function",
@@ -115,9 +126,9 @@ class QwenToolCallConverter(ToolCallConverter):
             
         return content.strip()
 
-
 class QwenStreamingHandler(StreamingToolCallHandler):
     """Qwen-specific streaming tool call handler"""
     
     def __init__(self):
         super().__init__(QwenToolCallConverter())
+
