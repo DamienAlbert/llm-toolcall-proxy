@@ -6,6 +6,14 @@ Configuration settings for the proxy server
 import os
 from typing import Dict, Any, Optional
 
+# Try to import python-dotenv for .env file support
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load .env file if it exists
+except ImportError:
+    # If python-dotenv is not installed, continue without it
+    pass
+
 
 class Config:
     """Configuration class for proxy server settings"""
